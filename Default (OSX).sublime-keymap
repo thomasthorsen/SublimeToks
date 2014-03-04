@@ -1,0 +1,57 @@
+[
+    {
+        // Run indexing
+        "keys": ["super+l", "super+i"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "index"
+        }
+    },
+    {
+        // Lookup references
+        "keys": ["super+l", "super+r"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "refs"
+        }
+    },
+    {
+        // Lookup definition
+        "keys": ["super+l", "super+d"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "defs"
+        }
+    },
+    {
+        // Lookup declaration
+        "keys": ["super+l", "super+e"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "decls"
+        }
+    },
+    {
+        // Lookup symbol
+        "keys": ["super+l", "super+s"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "any"
+        }
+    },
+    {
+        // Navigate back
+        "keys": ["super+comma"],
+        "command": "goback"
+    },
+    {
+        // Navigate forward
+        "keys": ["super+period"],
+        "command": "forward"
+    }
+]

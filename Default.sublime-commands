@@ -1,0 +1,22 @@
+[
+    {
+        "caption": "Toks: Look up references to symbol",
+        "command": "toks",
+        "args": {"mode": "refs"}
+    },
+    {
+        "caption": "Toks: Look up definition of symbol",
+        "command": "toks",
+        "args": {"mode": "defs"}
+    },
+    {
+        "caption": "Toks: Look up declaration of symbol",
+        "command": "toks",
+        "args": {"mode": "decls"}
+    },
+    {
+        "caption": "Toks: Look up any occurance of symbol",
+        "command": "toks",
+        "args": {"mode": "any"}
+    },
+]

@@ -1,0 +1,4 @@
+{
+    // Whether to prompt the user to edit/confirm the symbol before searching
+    "prompt_before_searching": false
+}
