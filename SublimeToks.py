@@ -10,7 +10,7 @@ import threading
 import time
 
 type_strings = {
-   "UNKNOWN": "Unknown",
+   "IDENTIFIER": "Identifier",
    "MACRO": "Macro",
    "MACRO_FUNCTION": "Macro function",
    "FUNCTION": "Function",
