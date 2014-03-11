@@ -56,10 +56,11 @@ def getCurrentPosition(view):
     return getEncodedPosition(view.file_name(), row + 1, col + 1)
 
 def isOnSameLine(pos1, pos2):
-    match1 = re.match("([^:]+):(\d+)", pos1)
-    match2 = re.match("([^:]+):(\d+)", pos2)
+    match1 = re.match("([^:]+):(\d+):(\d+)", pos1)
+    match2 = re.match("([^:]+):(\d+):(\d+)", pos2)
     if match1.group(1) == match2.group(1) and \
-       match1.group(2) == match2.group(2):
+       match1.group(2) == match2.group(2) and \
+       match1.group(3) == match2.group(3):
         return True
     return False
 
@@ -179,6 +180,8 @@ class ToksCommand(sublime_plugin.TextCommand):
             if not ToksCommand.is_history_empty():
                 encoded_position = ToksCommand._backLines[0]
                 sublime.active_window().open_file(encoded_position, sublime.ENCODED_POSITION)
+                while len(ToksCommand._forwardLines) > 1 and isOnSameLine(ToksCommand._forwardLines[0], encoded_position):
+                    ToksCommand._forwardLines = ToksCommand._forwardLines[1:]
 
     @staticmethod
     def navigate_forward(view):
