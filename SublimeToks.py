@@ -213,8 +213,8 @@ class ToksCommand(sublime_plugin.TextCommand):
         for directory in pdirs:
             if ("TOKS" in os.listdir(directory)):
                 return directory
-            if (len(pdirs) > 0):
-                return sublime.active_window().folders()[0]
+        if (len(pdirs) > 0):
+            return pdirs[0]
 
     def on_select(self, index):
         if index != -1:
