@@ -187,7 +187,7 @@ class ToksCommand(sublime_plugin.TextCommand):
         if not ToksCommand.is_future_empty():
             encoded_position = ToksCommand._forwardLines[0]
             ToksCommand._forwardLines = ToksCommand._forwardLines[1:]
-            current_position = getCurrentPosition(view)            
+            current_position = getCurrentPosition(view)
             if ToksCommand.is_history_empty() or not isOnSameLine(ToksCommand._backLines[0], current_position):
                 ToksCommand._backLines.insert(0, current_position)
             if ToksCommand.is_history_empty() or not isOnSameLine(ToksCommand._backLines[0], encoded_position):
@@ -201,7 +201,7 @@ class ToksCommand(sublime_plugin.TextCommand):
         if ToksCommand.is_history_empty() or not isOnSameLine(ToksCommand._backLines[0], destination):
             ToksCommand._backLines.insert(0, destination)
         ToksCommand._forwardLines = []
-        sublime.active_window().open_file(destination, sublime.ENCODED_POSITION)        
+        sublime.active_window().open_file(destination, sublime.ENCODED_POSITION)
 
     def __init__(self, view):
         self.view = view
@@ -238,7 +238,7 @@ class ToksCommand(sublime_plugin.TextCommand):
                 self.view.set_status("SublimeToks", message + " [%s=%s]" %
                                     (' ' * count, ' ' * (7 - count)))
                 sublime.set_timeout(lambda: self.update_status(worker, message, complete, count, dir), 100)
-            else:                
+            else:
                 self.view.erase_status("SublimeToks")
                 complete()
 
