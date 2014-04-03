@@ -93,13 +93,12 @@ class SublimeToksIndexer(threading.Thread):
                     if m.match(file):
                         targets.append(os.path.join(root, file))
 
-        cmd = ["toks"]
-        cmd.extend(targets)
-        proc = subprocess.Popen(cmd, cwd=self.directory, shell=False,
+        cmd = ["toks -F -"]
+        proc = subprocess.Popen(cmd, cwd=self.directory, shell=True,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = proc.communicate(None)
-        #print(proc.returncode)
-
+        proc.communicate(bytes('\n'.join(targets), 'UTF-8'))
+        if proc.returncode != 0:
+            sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
 
 class SublimeToksSearcher(threading.Thread):
 
@@ -253,7 +252,7 @@ class ToksCommand(sublime_plugin.TextCommand):
         if self.database == None:
             self.root = self.look_for_database()
             if self.root == None:
-                sublime.error_message("Please add at least one directory to the project to enable indexing")
+                sublime.error_message("SublimeToks: Please add at least one directory to the project to enable indexing")
                 return
             self.database = os.path.join(self.root, "TOKS")
 
