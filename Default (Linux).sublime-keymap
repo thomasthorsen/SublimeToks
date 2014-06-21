@@ -47,11 +47,19 @@
     {
         // Navigate back
         "keys": ["ctrl+comma"],
-        "command": "goback"
+        "command": "toks",
+        "args":
+        {
+            "mode": "back"
+        }
     },
     {
         // Navigate forward
         "keys": ["ctrl+period"],
-        "command": "forward"
+        "command": "toks",
+        "args":
+        {
+            "mode": "forward"
+        }
     }
 ]
