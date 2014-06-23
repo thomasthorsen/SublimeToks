@@ -62,19 +62,26 @@ class SublimeToksIndexer(threading.Thread):
                         filename = os.path.join(root, file)
                         if self.filenames == None or filename in self.filenames:
                             targets.append(filename)
+
         if len(targets) > 0:
             cmd = ['toks', '-i', self.index, '-F', '-']
             popen_arg_list = {
                 "stdin": subprocess.PIPE,
+                "stderr": subprocess.PIPE
             }
             if (sublime.platform() == "windows"):
                 popen_arg_list["creationflags"] = 0x08000000
 
             proc = subprocess.Popen(cmd, **popen_arg_list)
-            proc.communicate(bytes('\n'.join(targets), 'UTF-8'))
+            output = proc.communicate(bytes('\n'.join(targets), 'UTF-8'))[1].decode("utf-8").splitlines()
 
             if proc.returncode != 0:
-                sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
+                if "Wrong index format version, delete it to continue" in output:
+                    os.unlink(self.index)
+                    self.filenames = None; # Upconvert to full indexing
+                    self.run()
+                else:
+                    sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
 
 class SublimeToksSearcher(threading.Thread):
     def __init__(self, index, symbol, mode):
