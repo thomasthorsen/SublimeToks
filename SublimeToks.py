@@ -84,17 +84,18 @@ class SublimeToksIndexer(threading.Thread):
                     sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
 
 class SublimeToksSearcher(threading.Thread):
-    def __init__(self, index, symbol, mode):
+    def __init__(self, index, symbol, mode, commonprefix):
         super(SublimeToksSearcher, self).__init__()
         self.index = index
         self.symbol = symbol
         self.mode = mode
+        self.commonprefix = commonprefix
 
     def match_output_line(self, line):
         match = None
         output = None
 
-        match = re.match('(.+:\d+:\d+) (\S+) (\S+) (\S+) \S+', line)
+        match = re.match(re.escape(self.commonprefix + os.sep) + '(.+:\d+:\d+) (\S+) (\S+) (\S+) \S+', line)
         if match:
             try:
                 type_string = type_strings[match.group(3)] + " " + sub_type_strings[match.group(4)]
@@ -188,12 +189,14 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
     def on_select(self, index):
         if index != -1:
-            self.navigate_jump(self.pre_lookup_position, self.worker.matches[index][0])
+            location = os.path.join(self.commonprefix, self.worker.matches[index][0])
+            self.navigate_jump(self.pre_lookup_position, location)
         else:
             sublime.active_window().open_file(self.pre_lookup_position, sublime.ENCODED_POSITION)
 
     def on_highlighted(self, index):
-        sublime.active_window().open_file(self.worker.matches[index][0], sublime.ENCODED_POSITION | sublime.TRANSIENT)
+        location = os.path.join(self.commonprefix, self.worker.matches[index][0])
+        sublime.active_window().open_file(location, sublime.ENCODED_POSITION | sublime.TRANSIENT)
 
     def update_status(self, message, complete, count=0, dir=1):
         if self.worker.is_alive():
@@ -282,10 +285,12 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.on_search_confirmed(symbol)
 
     def on_search_confirmed(self, symbol):
+        self.commonprefix = os.path.normpath(os.path.commonprefix(sublime.active_window().folders()))
         self.worker = SublimeToksSearcher(
                 index = self.index,
                 symbol = symbol,
-                mode = self.mode)
+                mode = self.mode,
+                commonprefix = self.commonprefix)
         self.worker.start()
         self.update_status("Searching", self.on_lookup_complete)
 
