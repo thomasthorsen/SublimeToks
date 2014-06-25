@@ -6,6 +6,10 @@ import subprocess
 import string
 import threading
 import time
+import platform
+
+plugin_directory = os.path.dirname(os.path.realpath(__file__))
+toks = "toks"
 
 type_strings = {
    "IDENTIFIER": "Identifier",
@@ -31,6 +35,21 @@ sub_type_strings = {
    "DEF": "definition",
    "DECL": "declaration",
 };
+
+def plugin_loaded():
+    global toks
+
+    if sublime.platform() == "windows":
+        toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform(), "toks.exe")
+    else:
+        toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform() + "-" + platform.architecture()[0], "toks")
+
+    if os.path.isfile(toks_builtin):
+        try:
+            if subprocess.call([toks_builtin, "--version"]) == 0:
+                toks = toks_builtin
+        except:
+            pass
 
 def get_settings():
     return sublime.load_settings("SublimeToks.sublime-settings")
@@ -64,7 +83,7 @@ class SublimeToksIndexer(threading.Thread):
                             targets.append(filename)
 
         if len(targets) > 0:
-            cmd = ['toks', '-i', self.index, '-F', '-']
+            cmd = [toks, '-i', self.index, '-F', '-']
             popen_arg_list = {
                 "stdin": subprocess.PIPE,
                 "stderr": subprocess.PIPE
@@ -72,16 +91,18 @@ class SublimeToksIndexer(threading.Thread):
             if (sublime.platform() == "windows"):
                 popen_arg_list["creationflags"] = 0x08000000
 
-            proc = subprocess.Popen(cmd, **popen_arg_list)
-            output = proc.communicate(bytes('\n'.join(targets), 'UTF-8'))[1].decode("utf-8").splitlines()
-
-            if proc.returncode != 0:
-                if "Wrong index format version, delete it to continue" in output:
-                    os.unlink(self.index)
-                    self.filenames = None; # Upconvert to full indexing
-                    self.run()
-                else:
+            try:
+                proc = subprocess.Popen(cmd, **popen_arg_list)
+                output = proc.communicate(bytes('\n'.join(targets), 'UTF-8'))[1].decode("utf-8").splitlines()
+            except FileNotFoundError:
+                if self.filenames == None: # only error when doing an explicit full indexing
                     sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
+            else:
+                if proc.returncode != 0:
+                    if "Wrong index format version, delete it to continue" in output:
+                        os.unlink(self.index)
+                        self.filenames = None; # Upconvert to full indexing
+                        self.run()
 
 class SublimeToksSearcher(threading.Thread):
     def __init__(self, index, symbol, mode, commonprefix):
@@ -105,7 +126,7 @@ class SublimeToksSearcher(threading.Thread):
         return output
 
     def run(self):
-        cmd = ['toks', '-i', self.index, '--id', self.symbol]
+        cmd = [toks, '-i', self.index, '--id', self.symbol]
         if self.mode != "any":
             cmd.append('--' + str(self.mode))
         popen_arg_list = {
@@ -115,14 +136,18 @@ class SublimeToksSearcher(threading.Thread):
         if (sublime.platform() == "windows"):
             popen_arg_list["creationflags"] = 0x08000000
 
-        proc = subprocess.Popen(cmd, **popen_arg_list)
-        output = proc.communicate()[0].decode("utf-8").splitlines()
-
         self.matches = []
-        for line in output:
-            match = self.match_output_line(line)
-            if match != None:
-                self.matches.append(match)
+        try:
+            proc = subprocess.Popen(cmd, **popen_arg_list)
+            output = proc.communicate()[0].decode("utf-8").splitlines()
+        except FileNotFoundError:
+            sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
+        else:
+            if proc.returncode == 0:
+                for line in output:
+                    match = self.match_output_line(line)
+                    if match != None:
+                        self.matches.append(match)
 
 class ToksEventListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
