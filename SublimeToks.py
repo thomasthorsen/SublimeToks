@@ -116,7 +116,7 @@ class SublimeToksSearcher(threading.Thread):
         match = None
         output = None
 
-        match = re.match(re.escape(self.commonprefix + os.sep) + '(.+:\d+:\d+) (\S+) (\S+) (\S+) \S+', line)
+        match = re.match(re.escape(self.commonprefix) + '(.+:\d+:\d+) (\S+) (\S+) (\S+) \S+', line)
         if match:
             try:
                 type_string = type_strings[match.group(3)] + " " + sub_type_strings[match.group(4)]
@@ -160,6 +160,20 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.back_lines = []
         self.forward_lines = []
         self.index_one_files = []
+
+    def find_commonprefix(self):
+        folders = sublime.active_window().folders()
+        commonprefix = os.path.commonprefix(folders)
+        if commonprefix == "":
+            return commonprefix # Avoid normpath converting "" to "."
+        commonprefix = os.path.normpath(commonprefix) # strip trailing sep
+        if not os.path.isdir(commonprefix):
+            commonprefix = os.path.dirname(commonprefix) # strip incomplete dir
+        if commonprefix == "/": # do not treat root dir as a common prefix
+            return ""
+        if os.path.splitdrive(commonprefix)[1] != os.path.sep:
+            commonprefix = commonprefix + os.path.sep
+        return commonprefix
 
     def active_view_position(self):
         row, col = self.view.rowcol(self.view.sel()[0].a)
@@ -310,7 +324,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.on_search_confirmed(symbol)
 
     def on_search_confirmed(self, symbol):
-        self.commonprefix = os.path.normpath(os.path.commonprefix(sublime.active_window().folders()))
+        self.commonprefix = self.find_commonprefix()
         self.worker = SublimeToksSearcher(
                 index = self.index,
                 symbol = symbol,
