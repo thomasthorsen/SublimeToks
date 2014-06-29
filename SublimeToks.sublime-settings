@@ -3,5 +3,5 @@
     "prompt_before_searching": false,
 
     // Filename extensions to include in the index
-    "filename_extensions": "c|h|cpp|hpp|cxx|hxx"
+    "filename_extensions": "c|h|cpp|hpp|cxx|hxx|cc|cp|C|CPP|c++"
 }

@@ -71,19 +71,11 @@ class SublimeToksIndexer(threading.Thread):
         self.index = index
         self.filenames = filenames
 
-    def run(self):
-        targets = []
-        m = re.compile(".*\\.(" + get_setting("filename_extensions") + ")$")
-        for pdir in sublime.active_window().folders():
-            for root, dirs, files in os.walk(pdir):
-                for file in files:
-                    if m.match(file):
-                        filename = os.path.join(root, file)
-                        if self.filenames == None or filename in self.filenames:
-                            targets.append(filename)
-
-        if len(targets) > 0:
+    def index_files(self, files, cpp=False):
+        if len(files) > 0:
             cmd = [toks, '-i', self.index, '-F', '-']
+            if (cpp):
+                cmd.extend(["-l", "CPP"])
             popen_arg_list = {
                 "stdin": subprocess.PIPE,
                 "stderr": subprocess.PIPE
@@ -93,7 +85,7 @@ class SublimeToksIndexer(threading.Thread):
 
             try:
                 proc = subprocess.Popen(cmd, **popen_arg_list)
-                output = proc.communicate(bytes('\n'.join(targets), 'UTF-8'))[1].decode("utf-8").splitlines()
+                output = proc.communicate(bytes('\n'.join(files), 'UTF-8'))[1].decode("utf-8").splitlines()
             except FileNotFoundError:
                 if self.filenames == None: # only error when doing an explicit full indexing
                     sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
@@ -103,6 +95,32 @@ class SublimeToksIndexer(threading.Thread):
                         os.unlink(self.index)
                         self.filenames = None; # Upconvert to full indexing
                         self.run()
+
+    def run(self):
+        sources = []
+        headers = []
+        cpp = 0
+        c = 0
+        m = re.compile("\\.(" + re.escape(get_setting("filename_extensions")).replace("\\|", "|") + ")$")
+        mcpp = re.compile("\\.(cpp|cxx|cc|cp|C|CPP|c\\+\\+)$")
+        for pdir in sublime.active_window().folders():
+            for root, dirs, files in os.walk(pdir):
+                for file in files:
+                    extension = os.path.normcase(os.path.splitext(file)[1])
+                    if m.match(extension):
+                        filename = os.path.join(root, file)
+                        if self.filenames == None or filename in self.filenames:
+                            if extension == ".h":
+                                headers.append(filename)
+                            else:
+                                sources.append(filename)
+                        if extension == ".c":
+                            c += 1
+                        elif mcpp.match(extension):
+                            cpp += 1
+        self.index_files(headers, cpp > c)
+        self.index_files(sources)
+
 
 class SublimeToksSearcher(threading.Thread):
     def __init__(self, index, symbol, mode, commonprefix):
