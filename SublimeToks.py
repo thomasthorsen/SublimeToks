@@ -38,15 +38,17 @@ sub_type_strings = {
 
 def plugin_loaded():
     global toks
+    creationflags = 0
 
     if sublime.platform() == "windows":
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform(), "toks.exe")
+        creationflags = 0x08000000
     else:
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform() + "-" + platform.architecture()[0], "toks")
 
     if os.path.isfile(toks_builtin):
         try:
-            if subprocess.call([toks_builtin, "--version"]) == 0:
+            if subprocess.call([toks_builtin, '--version'], creationflags=creationflags) == 0:
                 toks = toks_builtin
         except:
             pass
