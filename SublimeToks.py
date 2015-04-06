@@ -180,6 +180,8 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.back_lines = []
         self.forward_lines = []
         self.index_one_files = []
+        self.quick_panel_index = 0
+        self.quick_panel_ignore_cancel = False
 
     def find_commonprefix(self):
         folders = sublime.active_window().folders()
@@ -251,11 +253,25 @@ class ToksCommand(sublime_plugin.WindowCommand):
             location = os.path.join(self.commonprefix, self.worker.matches[index][0])
             self.navigate_jump(self.pre_lookup_position, location)
         else:
-            sublime.active_window().open_file(self.pre_lookup_position, sublime.ENCODED_POSITION)
+            if self.quick_panel_ignore_cancel:
+                self.quick_panel_ignore_cancel = False
+            else:
+                sublime.active_window().open_file(self.pre_lookup_position, sublime.ENCODED_POSITION)
 
     def on_highlighted(self, index):
         location = os.path.join(self.commonprefix, self.worker.matches[index][0])
+        match = re.match("([^:]+):\d+:\d+", location)
+        view = sublime.active_window().find_open_file(match.group(1))
+        if view:
+            active_group = sublime.active_window().active_group()
+            group = sublime.active_window().get_view_index(view)[0]
+            if active_group != group:
+                self.quick_panel_ignore_cancel = True
+                sublime.active_window().run_command("hide_overlay")
         sublime.active_window().open_file(location, sublime.ENCODED_POSITION | sublime.TRANSIENT)
+        if view and active_group != group:
+            self.quick_panel_index = index
+            self.on_lookup_complete()
 
     def update_status(self, message, complete, count=0, dir=1):
         if self.worker.is_alive():
@@ -351,7 +367,8 @@ class ToksCommand(sublime_plugin.WindowCommand):
                 mode = self.mode,
                 commonprefix = self.commonprefix)
         self.worker.start()
+        self.quick_panel_index = 0
         self.update_status("Searching", self.on_lookup_complete)
 
     def on_lookup_complete(self):
-        sublime.active_window().show_quick_panel(self.worker.matches, self.on_select, 0, 0, self.on_highlighted)
+        sublime.active_window().show_quick_panel(self.worker.matches, self.on_select, sublime.KEEP_OPEN_ON_FOCUS_LOST, self.quick_panel_index, self.on_highlighted)
