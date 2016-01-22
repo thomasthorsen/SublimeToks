@@ -1,22 +1,42 @@
 [
     {
-        "caption": "Toks: Look up references to symbol",
+        "caption": "Toks: Quick search for references to symbol under cursor",
         "command": "toks",
         "args": {"mode": "refs"}
     },
     {
-        "caption": "Toks: Look up definition of symbol",
+        "caption": "Toks: Quick search for definitions of symbol under cursor",
         "command": "toks",
         "args": {"mode": "defs"}
     },
     {
-        "caption": "Toks: Look up declaration of symbol",
+        "caption": "Toks: Quick search for declarations of symbol under cursor",
         "command": "toks",
         "args": {"mode": "decls"}
     },
     {
-        "caption": "Toks: Look up any occurance of symbol",
+        "caption": "Toks: Quick search for any occurrences of symbol under cursor",
         "command": "toks",
         "args": {"mode": "any"}
+    },
+    {
+        "caption": "Toks: Search for references (prompt)",
+        "command": "toks",
+        "args": {"mode": "refs", "prompt": "True"}
+    },
+    {
+        "caption": "Toks: Search for definitions (prompt)",
+        "command": "toks",
+        "args": {"mode": "defs", "prompt": "True"}
+    },
+    {
+        "caption": "Toks: Search for declarations (prompt)",
+        "command": "toks",
+        "args": {"mode": "decls", "prompt": "True"}
+    },
+    {
+        "caption": "Toks: Search for any occurrences of symbol (prompt)",
+        "command": "toks",
+        "args": {"mode": "any", "prompt": "True"}
     },
 ]

@@ -45,6 +45,46 @@
         }
     },
     {
+        // Lookup references (prompt)
+        "keys": ["super+shift+l", "super+shift+r"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "refs",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup definition (prompt)
+        "keys": ["super+shift+l", "super+shift+d"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "defs",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup declaration (prompt)
+        "keys": ["super+shift+l", "super+shift+e"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "decls",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup symbol (prompt)
+        "keys": ["super+shift+l", "super+shift+s"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "any",
+            "prompt": "True"
+        }
+    },
+    {
         // Navigate back
         "keys": ["super+comma"],
         "command": "toks",

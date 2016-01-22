@@ -41,7 +41,47 @@
         "command": "toks",
         "args":
         {
-            "mode": "any"
+            "mode": "any",
+        }
+    },
+    {
+        // Lookup references (prompt)
+        "keys": ["ctrl+shift+l", "ctrl+shift+r"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "refs",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup definition (prompt)
+        "keys": ["ctrl+shift+l", "ctrl+shift+d"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "defs",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup declaration (prompt)
+        "keys": ["ctrl+shift+l", "ctrl+shift+e"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "decls",
+            "prompt": "True"
+        }
+    },
+    {
+        // Lookup symbol (prompt)
+        "keys": ["ctrl+shift+l", "ctrl+shift+s"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "any",
+            "prompt": "True"
         }
     },
     {

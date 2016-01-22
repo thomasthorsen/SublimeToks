@@ -298,7 +298,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.index_one_files = []
             self.worker.start()
 
-    def run(self, mode, filename=None):
+    def run(self, mode, filename=None, prompt=False):
         project_file_name = self.window.project_file_name()
         if not project_file_name:
             if mode != "index_one":
@@ -328,6 +328,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
             return
 
         self.mode = mode
+        self.prompt = prompt
 
         # Check if index exists
         if mode == "index" or not os.path.isfile(self.index):
@@ -354,8 +355,8 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.view.sel().clear()
         self.view.sel().add(first_selection)
 
-        if get_setting("prompt_before_searching") == True:
-            sublime.active_window().show_input_panel('Toks Symbol To Search:',
+        if self.prompt:
+            sublime.active_window().show_input_panel('Search:',
                                                      symbol,
                                                      self.on_search_confirmed,
                                                      None,
