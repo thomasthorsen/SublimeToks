@@ -1,6 +1,7 @@
 
 import sublime, sublime_plugin
 import os
+import stat
 import re
 import subprocess
 import string
@@ -43,8 +44,10 @@ def plugin_loaded():
     if sublime.platform() == "windows":
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform(), "toks.exe")
         creationflags = 0x08000000
-    else:
+    elif sublime.platform() == "linux":
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform() + "-" + platform.architecture()[0], "toks")
+        if os.path.isfile(toks_builtin):
+            os.chmod(toks_builtin, (os.stat(toks_builtin).st_mode | stat.S_IXUSR))
 
     if os.path.isfile(toks_builtin):
         try:
