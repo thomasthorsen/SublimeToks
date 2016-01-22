@@ -300,8 +300,9 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
     def run(self, mode, filename=None):
         project_file_name = self.window.project_file_name()
-        if not project_file_name and mode != "index_one":
-            sublime.error_message("SublimeToks: Please create a project to enable indexing")
+        if not project_file_name:
+            if mode != "index_one":
+                sublime.error_message("SublimeToks: Please create a project to enable indexing")
             return
 
         self.index = project_file_name.replace(".sublime-project", ".sublime-toks")
