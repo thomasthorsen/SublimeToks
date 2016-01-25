@@ -9,6 +9,8 @@ import threading
 import time
 import platform
 
+from operator import itemgetter
+
 plugin_directory = os.path.dirname(os.path.realpath(__file__))
 toks = "toks"
 
@@ -136,17 +138,13 @@ class SublimeToksSearcher(threading.Thread):
         self.commonprefix = commonprefix
 
     def match_output_line(self, line):
-        match = None
-        output = None
-
-        match = re.match(re.escape(self.commonprefix) + '(.+:\d+:\d+) (\S+) (\S+) (\S+) \S+', line)
+        match = re.match(re.escape(self.commonprefix) + '(.+):(\d+):(\d+) (\S+) (\S+) (\S+) \S+', line)
         if match:
             try:
-                type_string = type_strings[match.group(3)] + " " + sub_type_strings[match.group(4)]
+                type_string = type_strings[match.group(5)] + " " + sub_type_strings[match.group(6)]
             except KeyError:
-                type_string = match.group(3) + " " + match.group(4)
-            output = [match.group(1), match.group(2), type_string]
-        return output
+                type_string = match.group(5) + " " + match.group(6)
+            self.matches.append([match.group(1), int(match.group(2)), int(match.group(3)), match.group(4), type_string])
 
     def run(self):
         cmd = [toks, '-i', self.index, '--id', self.symbol]
@@ -168,9 +166,13 @@ class SublimeToksSearcher(threading.Thread):
         else:
             if proc.returncode == 0:
                 for line in output:
-                    match = self.match_output_line(line)
-                    if match != None:
-                        self.matches.append(match)
+                    self.match_output_line(line)
+                self.matches.sort(key=itemgetter(0, 1, 2))
+                for match in self.matches:
+                    match[0] += ":" + str(match[1])
+                    del match[1]
+                    match[0] += ":" + str(match[1])
+                    del match[1]
 
 class ToksEventListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
