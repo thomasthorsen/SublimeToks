@@ -208,8 +208,8 @@ class ToksCommand(sublime_plugin.WindowCommand):
         return self.view.file_name() + ":" + str(row + 1) + ":" + str(col + 1)
 
     def is_same_location(self, pos1, pos2):
-        match1 = re.match("([^:]+):(\d+):(\d+)", pos1)
-        match2 = re.match("([^:]+):(\d+):(\d+)", pos2)
+        match1 = re.match("(.+):(\d+):(\d+)", pos1)
+        match2 = re.match("(.+):(\d+):(\d+)", pos2)
         if match1.group(1) == match2.group(1) and \
            match1.group(2) == match2.group(2) and \
            match1.group(3) == match2.group(3):
