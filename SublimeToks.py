@@ -108,7 +108,8 @@ class SublimeToksIndexer(threading.Thread):
         headers = []
         cpp = 0
         c = 0
-        m = re.compile("\\.(" + re.escape(get_setting("filename_extensions")).replace("\\|", "|") + ")$")
+        m = re.compile("\\.(" + re.escape(get_setting("filename_extensions",
+                                                      "c|h|cpp|hpp|cxx|hxx|cc|cp|C|CPP|c++")).replace("\\|", "|") + ")$")
         mcpp = re.compile("\\.(cpp|cxx|cc|cp|C|CPP|c\\+\\+)$")
         for pdir in sublime.active_window().folders():
             for root, dirs, files in os.walk(pdir):
@@ -265,7 +266,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
     def on_highlighted(self, index):
         location = os.path.join(self.commonprefix, self.worker.matches[index][0])
-        match = re.match("([^:]+):\d+:\d+", location)
+        match = re.match("(.+):\d+:\d+", location)
         view = sublime.active_window().find_open_file(match.group(1))
         if view:
             active_group = sublime.active_window().active_group()
