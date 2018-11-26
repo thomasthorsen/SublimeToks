@@ -8,6 +8,7 @@ import string
 import threading
 import time
 import platform
+import html
 
 from operator import itemgetter
 
@@ -179,6 +180,32 @@ class ToksEventListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
         view.window().run_command("toks", {"mode": "index_one", "filename": view.file_name()})
 
+class ToksOutputPanel():
+    def __init__(self, symbol, current_position, matches, commonprefix):
+        self.name = "Toks: " + symbol
+        sublime.active_window().destroy_output_panel(self.name)
+        self.op = sublime.active_window().create_output_panel(self.name)
+        sublime.active_window().run_command("show_panel", {"panel": "output." + self.name})
+
+        contents = "<b><a href=$hide style=\"text-decoration: none\">" + chr(0x00D7) + "</a> " + symbol + "</b> (<a href=" + os.path.join(commonprefix, current_position) + ">" + current_position + "</a>)"
+        contents += "<ul>"
+
+        for match in matches:
+            contents += "<li><a href=" + os.path.join(commonprefix, match[0]) + ">" + match[0] + "</a> " + html.escape(match[1], quote=False) + " " + match[2] + "</li>"
+
+        contents += "</ul>"
+
+        self.phantom = sublime.Phantom(self.op.sel()[0], '<body>' + contents + '</body>', sublime.LAYOUT_INLINE, on_navigate=self.on_phantom_navigate)
+        self.phantomset = sublime.PhantomSet(self.op, "toks")
+        self.phantomset.update([self.phantom])
+
+    def on_phantom_navigate(self, url):
+        if url == "$hide":
+            sublime.active_window().destroy_output_panel(self.name)
+        else:
+            sublime.active_window().open_file(url, sublime.ENCODED_POSITION)
+        return
+
 class ToksCommand(sublime_plugin.WindowCommand):
     def __init__(self, window):
         super(ToksCommand, self).__init__(window)
@@ -301,7 +328,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.index_one_files = []
             self.worker.start()
 
-    def run(self, mode, filename=None, prompt=False):
+    def run(self, mode, filename=None, prompt=False, report=False):
         project_file_name = self.window.project_file_name()
         if not project_file_name:
             if mode != "index_one":
@@ -332,6 +359,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
         self.mode = mode
         self.prompt = prompt
+        self.report = report
 
         # Check if index exists
         if mode == "index" or not os.path.isfile(self.index):
@@ -368,6 +396,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.on_search_confirmed(symbol)
 
     def on_search_confirmed(self, symbol):
+        self.symbol = symbol
         self.commonprefix = self.find_commonprefix()
         self.worker = SublimeToksSearcher(
                 index = self.index,
@@ -379,4 +408,9 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.update_status("Searching", self.on_lookup_complete)
 
     def on_lookup_complete(self):
-        sublime.active_window().show_quick_panel(self.worker.matches, self.on_select, sublime.KEEP_OPEN_ON_FOCUS_LOST, self.quick_panel_index, self.on_highlighted)
+        if self.report:
+            ToksOutputPanel(self.symbol, self.pre_lookup_position, self.worker.matches, self.commonprefix)
+        else:
+            sublime.active_window().show_quick_panel(self.worker.matches, self.on_select, sublime.KEEP_OPEN_ON_FOCUS_LOST, self.quick_panel_index, self.on_highlighted)
+
+

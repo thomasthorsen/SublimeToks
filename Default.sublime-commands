@@ -39,4 +39,14 @@
         "command": "toks",
         "args": {"mode": "any", "prompt": "True"}
     },
+    {
+        "caption": "Toks: Full report any occurrences of symbol under cursor",
+        "command": "toks",
+        "args": {"mode": "any", "report": "True"}
+    },
+    {
+        "caption": "Toks: Full report any occurrences of symbol (prompt)",
+        "command": "toks",
+        "args": {"mode": "any", "prompt": "True", "report": "True"}
+    },
 ]

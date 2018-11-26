@@ -85,6 +85,27 @@
         }
     },
     {
+        // Lookup symbol (report in output panel)
+        "keys": ["super+l", "super+f"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "any",
+            "report": "True"
+        }
+    },
+    {
+        // Lookup symbol (prompt and report in output panel)
+        "keys": ["super+shift+l", "super+shift+f"],
+        "command": "toks",
+        "args":
+        {
+            "mode": "any",
+            "prompt": "True",
+            "report": "True"
+        }
+    },
+    {
         // Navigate back
         "keys": ["super+comma"],
         "command": "toks",
