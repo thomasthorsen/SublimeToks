@@ -187,7 +187,12 @@ class ToksOutputPanel():
         self.op = sublime.active_window().create_output_panel(self.name)
         sublime.active_window().run_command("show_panel", {"panel": "output." + self.name})
 
-        contents = "<b><a href=$hide style=\"text-decoration: none\">" + chr(0x00D7) + "</a> " + symbol + "</b> (<a href=" + os.path.join(commonprefix, current_position) + ">" + current_position + "</a>)"
+        contents = "<b><a href=$hide style=\"text-decoration: none\">" + chr(0x00D7) + "</a> " + symbol + "</b>"
+        if isinstance(current_position, str):
+            contents += " (<a href=" + os.path.join(commonprefix, current_position) + ">" + current_position + "</a>)"
+        else:
+            contents += " (<a href=$back>" + "unsaved view" + "</a>)"
+            self.pre_lookup_view = current_position
         contents += "<ul>"
 
         for match in matches:
@@ -202,6 +207,8 @@ class ToksOutputPanel():
     def on_phantom_navigate(self, url):
         if url == "$hide":
             sublime.active_window().destroy_output_panel(self.name)
+        elif url == "$back":
+            sublime.active_window().focus_view(self.pre_lookup_view)
         else:
             sublime.active_window().open_file(url, sublime.ENCODED_POSITION)
         return
@@ -232,7 +239,9 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
     def active_view_position(self):
         row, col = self.view.rowcol(self.view.sel()[0].a)
-        return self.view.file_name() + ":" + str(row + 1) + ":" + str(col + 1)
+        file_name = self.view.file_name()
+        if file_name:
+            return file_name + ":" + str(row + 1) + ":" + str(col + 1)
 
     def is_same_location(self, pos1, pos2):
         match1 = re.match("(.+):(\d+):(\d+)", pos1)
@@ -252,10 +261,11 @@ class ToksCommand(sublime_plugin.WindowCommand):
     def navigate_back(self):
         if not self.is_history_empty():
             current_position = self.active_view_position()
-            if self.is_future_empty() or not self.is_same_location(self.forward_lines[0], current_position):
-                self.forward_lines.insert(0, current_position)
-            while len(self.back_lines) > 1 and self.is_same_location(self.back_lines[0], current_position):
-                self.back_lines = self.back_lines[1:]
+            if current_position:
+                if self.is_future_empty() or not self.is_same_location(self.forward_lines[0], current_position):
+                    self.forward_lines.insert(0, current_position)
+                while len(self.back_lines) > 1 and self.is_same_location(self.back_lines[0], current_position):
+                    self.back_lines = self.back_lines[1:]
             if not self.is_history_empty():
                 encoded_position = self.back_lines[0]
                 sublime.active_window().open_file(encoded_position, sublime.ENCODED_POSITION)
@@ -267,15 +277,17 @@ class ToksCommand(sublime_plugin.WindowCommand):
             encoded_position = self.forward_lines[0]
             self.forward_lines = self.forward_lines[1:]
             current_position = self.active_view_position()
-            if self.is_history_empty() or not self.is_same_location(self.back_lines[0], current_position):
-                self.back_lines.insert(0, current_position)
-            if self.is_history_empty() or not self.is_same_location(self.back_lines[0], encoded_position):
-                self.back_lines.insert(0, encoded_position)
+            if current_position:
+                if self.is_history_empty() or not self.is_same_location(self.back_lines[0], current_position):
+                    self.back_lines.insert(0, current_position)
+                if self.is_history_empty() or not self.is_same_location(self.back_lines[0], encoded_position):
+                    self.back_lines.insert(0, encoded_position)
             sublime.active_window().open_file(encoded_position, sublime.ENCODED_POSITION)
 
     def navigate_jump(self, source, destination):
-        if self.is_history_empty() or not self.is_same_location(self.back_lines[0], source):
-            self.back_lines.insert(0, source)
+        if source:
+            if self.is_history_empty() or not self.is_same_location(self.back_lines[0], source):
+                self.back_lines.insert(0, source)
         if self.is_history_empty() or not self.is_same_location(self.back_lines[0], destination):
             self.back_lines.insert(0, destination)
         self.forward_lines = []
@@ -288,8 +300,10 @@ class ToksCommand(sublime_plugin.WindowCommand):
         else:
             if self.quick_panel_ignore_cancel:
                 self.quick_panel_ignore_cancel = False
-            else:
+            elif self.pre_lookup_position:
                 sublime.active_window().open_file(self.pre_lookup_position, sublime.ENCODED_POSITION)
+            elif self.pre_lookup_view:
+                sublime.active_window().focus_view(self.pre_lookup_view)
 
     def on_highlighted(self, index):
         location = os.path.join(self.commonprefix, self.worker.matches[index][0])
@@ -377,6 +391,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
         # Save the pre lookup position
         self.pre_lookup_position = self.active_view_position()
+        self.pre_lookup_view = self.view
 
         # Search for the first word that is selected.
         first_selection = self.view.word(self.view.sel()[0])
@@ -409,7 +424,7 @@ class ToksCommand(sublime_plugin.WindowCommand):
 
     def on_lookup_complete(self):
         if self.report:
-            ToksOutputPanel(self.symbol, self.pre_lookup_position, self.worker.matches, self.commonprefix)
+            ToksOutputPanel(self.symbol, self.pre_lookup_position or self.pre_lookup_view, self.worker.matches, self.commonprefix)
         else:
             sublime.active_window().show_quick_panel(self.worker.matches, self.on_select, sublime.KEEP_OPEN_ON_FOCUS_LOST, self.quick_panel_index, self.on_highlighted)
 
