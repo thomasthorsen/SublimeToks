@@ -1,14 +1,5 @@
 [
     {
-        // Run indexing
-        "keys": ["ctrl+l", "ctrl+i"],
-        "command": "toks",
-        "args":
-        {
-            "mode": "index"
-        }
-    },
-    {
         // Lookup references
         "keys": ["ctrl+l", "ctrl+r"],
         "command": "toks",

@@ -1,17 +1,17 @@
 SublimeToks
 ===========
 
-Easy to use source code navigation for C/C++ using toks as indexing backend.
+Easy to use source code navigation for C/C++ using ripgrep and toks as indexing backend.
 
 Usage
 =====
 
-You need to have a Sublime Text project for SublimeToks to know which files to index. The index can be built or rebuilt anytime using the ctrl-l + ctrl-i shortcut. It will also automatically be created if it doesn't exist when using any of the lookup commands (also available from the command palette):
+The only setup required is to create a project with at least one path for SublimeToks to know which files to search. Use any of the following lookup commands (also available from the command palette) to search for symbols and navigate to them:
 
- * ctrl-l + ctrl-s : Lookup any identifier
- * ctrl-l + ctrl-d : Lookup definitions of identifier
- * ctrl-l + ctrl-e : Lookup declarations of identifier
- * ctrl-l + ctrl-r : Lookup references to identifier
+ * ctrl-l + ctrl-s : Lookup all locations of a symbol
+ * ctrl-l + ctrl-d : Lookup only definitions of a symbol
+ * ctrl-l + ctrl-e : Lookup only declarations of a symbol
+ * ctrl-l + ctrl-r : Lookup only references to a symbol
 
 When using any of the lookup commands, the results will be presented in a quick panel with 3 lines of information for each result:
 
@@ -29,4 +29,4 @@ Note that if you move the caret away from a location in the history and then nav
 Installation
 ============
 
-Install in the standard way using Package Control. If you are using Windows or Linux 64bit the plugin comes preloaded with the toks binary needed for the indexing. If you are using Linux 32bit or Mac OS X you will need to build toks from source and put it in your path to be able to use this plugin, see instructions at http://www.github.com/thomasthorsen/toks.
+Install in the standard way using Package Control. If you are using Windows or Linux 64bit the plugin comes preloaded with the ripgrep and toks binaries needed for the indexing. If you are using Linux 32bit or Mac OS X you will need to install ripgrep and build toks from source and put it in your path to be able to use this plugin, see instructions at http://www.github.com/thomasthorsen/toks.

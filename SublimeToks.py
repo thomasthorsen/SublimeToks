@@ -14,6 +14,7 @@ from operator import itemgetter
 
 plugin_directory = os.path.dirname(os.path.realpath(__file__))
 toks = "toks"
+rg = "rg"
 
 type_strings = {
    "IDENTIFIER": "Identifier",
@@ -42,20 +43,32 @@ sub_type_strings = {
 
 def plugin_loaded():
     global toks
+    global rg
     creationflags = 0
 
     if sublime.platform() == "windows":
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform(), "toks.exe")
+        rg_builtin = os.path.join(plugin_directory, "ripgrep", sublime.platform(), "rg.exe")
         creationflags = 0x08000000
     elif sublime.platform() == "linux":
         toks_builtin = os.path.join(plugin_directory, "toks", sublime.platform() + "-" + platform.architecture()[0], "toks")
+        rg_builtin = os.path.join(plugin_directory, "ripgrep", sublime.platform() + "-" + platform.architecture()[0], "toks")
         if os.path.isfile(toks_builtin):
             os.chmod(toks_builtin, (os.stat(toks_builtin).st_mode | stat.S_IXUSR))
+        if os.path.isfile(rg_builtin):
+            os.chmod(rg_builtin, (os.stat(rg_builtin).st_mode | stat.S_IXUSR))
 
     if os.path.isfile(toks_builtin):
         try:
             if subprocess.call([toks_builtin, '--version'], creationflags=creationflags) == 0:
                 toks = toks_builtin
+        except:
+            pass
+
+    if os.path.isfile(rg_builtin):
+        try:
+            if subprocess.call([rg_builtin, '--version'], creationflags=creationflags) == 0:
+                rg = rg_builtin
         except:
             pass
 
@@ -73,71 +86,43 @@ def get_setting(key, default=None, view=None):
         pass
     return get_settings().get(key, default)
 
-class SublimeToksIndexer(threading.Thread):
-    def __init__(self, index, filenames=None):
-        super(SublimeToksIndexer, self).__init__()
-        self.index = index
-        self.filenames = filenames
-
-    def index_files(self, files, cpp=False):
-        if len(files) > 0:
-            cmd = [toks, '-i', self.index, '-F', '-']
-            if (cpp):
-                cmd.extend(["-l", "CPP"])
-            popen_arg_list = {
-                "stdin": subprocess.PIPE,
-                "stderr": subprocess.PIPE
-            }
-            if (sublime.platform() == "windows"):
-                popen_arg_list["creationflags"] = 0x08000000
-
-            try:
-                proc = subprocess.Popen(cmd, **popen_arg_list)
-                output = proc.communicate(bytes('\n'.join(files), 'UTF-8'))[1].decode("utf-8").splitlines()
-            except FileNotFoundError:
-                if self.filenames == None: # only error when doing an explicit full indexing
-                    sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
-            else:
-                if proc.returncode != 0:
-                    if "Wrong index format version, delete it to continue" in output:
-                        os.unlink(self.index)
-                        self.filenames = None; # Upconvert to full indexing
-                        self.run()
-
-    def run(self):
-        sources = []
-        headers = []
-        cpp = 0
-        c = 0
-        m = re.compile("\\.(" + re.escape(get_setting("filename_extensions",
-                                                      "c|h|cpp|hpp|cxx|hxx|cc|cp|C|CPP|c++")).replace("\\|", "|") + ")$")
-        mcpp = re.compile("\\.(cpp|cxx|cc|cp|C|CPP|c\\+\\+)$")
-        for pdir in sublime.active_window().folders():
-            for root, dirs, files in os.walk(pdir):
-                for file in files:
-                    extension = os.path.normcase(os.path.splitext(file)[1])
-                    if m.match(extension):
-                        filename = os.path.join(root, file)
-                        if self.filenames == None or filename in self.filenames:
-                            if extension == ".h":
-                                headers.append(filename)
-                            else:
-                                sources.append(filename)
-                        if extension == ".c":
-                            c += 1
-                        elif mcpp.match(extension):
-                            cpp += 1
-        self.index_files(headers, cpp > c)
-        self.index_files(sources)
-
-
 class SublimeToksSearcher(threading.Thread):
-    def __init__(self, index, symbol, mode, commonprefix):
+    def __init__(self, index, symbol, mode, commonprefix, view):
         super(SublimeToksSearcher, self).__init__()
         self.index = index
         self.symbol = symbol
         self.mode = mode
         self.commonprefix = commonprefix
+        self.view = view
+        self.matches = []
+        self.total_file_count = 0
+        self.total_file_processed = 0
+
+    def index_files(self, files, cpp=False):
+        count = 0
+        while len(files) > 0:
+            progress = round(100 * self.total_file_processed / self.total_file_count)
+            self.view.set_status("SublimeToks", "Searching [%d%%]" % progress)
+            slice_of_files = files[:8]
+            del files[:len(slice_of_files)]
+            self.total_file_processed += len(slice_of_files)
+            cmd = [toks, '-i', self.index, '-F', '-']
+            if (cpp):
+                cmd.extend(["-l", "CPP"])
+            popen_arg_list = {"stdin": subprocess.PIPE, "stderr": subprocess.PIPE}
+            if (sublime.platform() == "windows"):
+                popen_arg_list["creationflags"] = 0x08000000
+
+            try:
+                proc = subprocess.Popen(cmd, **popen_arg_list)
+                output = proc.communicate(bytes('\n'.join(slice_of_files), 'UTF-8'))[1].decode("utf-8").splitlines()
+            except FileNotFoundError:
+                sublime.error_message("SublimeToks: Failed to invoke the toks indexer, please make sure you have it installed and added to the search path")
+            else:
+                if proc.returncode != 0:
+                    if "Wrong index format version, delete it to continue" in output:
+                        os.unlink(self.index)
+                        self.run()
 
     def match_output_line(self, line):
         match = re.match(re.escape(self.commonprefix) + '(.+):(\d+):(\d+) (\S+) (\S+) (\S+) \S+', line)
@@ -148,7 +133,58 @@ class SublimeToksSearcher(threading.Thread):
                 type_string = match.group(5) + " " + match.group(6)
             self.matches.append([match.group(1), int(match.group(2)), int(match.group(3)), match.group(4), type_string])
 
+    def to_globs(self, iterable):
+        for item in iterable:
+            yield "-g"
+            yield "*." + item
+
     def run(self):
+        # Find files
+        self.view.set_status("SublimeToks", "Searching...")
+        extensions = get_setting("filename_extensions", "c|h|cpp|hpp|cxx|hxx|cc|cp|C|CPP|c++")
+        globs = list(self.to_globs(extensions.split("|")))
+        symbol = self.symbol.replace("*", ".*").replace("?", ".")
+        cmd = [rg, "--files-with-matches"] + globs + [symbol] + sublime.active_window().folders()
+        popen_arg_list = {"stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
+        if (sublime.platform() == "windows"):
+            popen_arg_list["creationflags"] = 0x08000000
+
+        try:
+            proc = subprocess.Popen(cmd, **popen_arg_list)
+            files = proc.communicate()[0].decode("utf-8").splitlines()
+        except FileNotFoundError:
+            sublime.error_message("SublimeToks: Failed to invoke ripgrep, please make sure you have it installed and added to the search path")
+        else:
+            if proc.returncode != 0:
+                # No results or possibly other error
+                self.view.erase_status("SublimeToks")
+                return
+
+        # Index found files
+        sources = []
+        headers = []
+        cpp = 0
+        c = 0
+        m = re.compile("\\.(" + re.escape(get_setting("filename_extensions",
+                                                      "c|h|cpp|hpp|cxx|hxx|cc|cp|C|CPP|c++")).replace("\\|", "|") + ")$")
+        mcpp = re.compile("\\.(cpp|cxx|cc|cp|C|CPP|c\\+\\+)$")
+        for file in files:
+            extension = os.path.normcase(os.path.splitext(file)[1])
+            if m.match(extension):
+                if extension == ".h":
+                    headers.append(file)
+                else:
+                    sources.append(file)
+                if extension == ".c":
+                    c += 1
+                elif mcpp.match(extension):
+                    cpp += 1
+        self.total_file_count = len(headers) + len(sources)
+        self.index_files(headers, cpp > c)
+        self.index_files(sources)
+        self.view.set_status("SublimeToks", "Searching...")
+
+        # Lookup in index
         cmd = [toks, '-i', self.index, '--id', self.symbol]
         if self.mode != "any":
             cmd.append('--' + str(self.mode))
@@ -159,7 +195,6 @@ class SublimeToksSearcher(threading.Thread):
         if (sublime.platform() == "windows"):
             popen_arg_list["creationflags"] = 0x08000000
 
-        self.matches = []
         try:
             proc = subprocess.Popen(cmd, **popen_arg_list)
             output = proc.communicate()[0].decode("utf-8").splitlines()
@@ -175,10 +210,7 @@ class SublimeToksSearcher(threading.Thread):
                     del match[1]
                     match[0] += ":" + str(match[1])
                     del match[1]
-
-class ToksEventListener(sublime_plugin.EventListener):
-    def on_post_save(self, view):
-        view.window().run_command("toks", {"mode": "index_one", "filename": view.file_name()})
+        self.view.erase_status("SublimeToks")
 
 class ToksOutputPanel():
     def __init__(self, symbol, current_position, matches, commonprefix):
@@ -219,7 +251,6 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.worker = None
         self.back_lines = []
         self.forward_lines = []
-        self.index_one_files = []
         self.quick_panel_index = 0
         self.quick_panel_ignore_cancel = False
 
@@ -320,33 +351,17 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.quick_panel_index = index
             self.on_lookup_complete()
 
-    def update_status(self, message, complete, count=0, dir=1):
+    def check_status(self, complete):
         if self.worker.is_alive():
-            count = count + dir
-            if count == 7:
-                dir = -1
-            elif count == 0:
-                dir = 1
-            self.view.set_status("SublimeToks", message + " [%s=%s]" % (' ' * count, ' ' * (7 - count)))
-            sublime.set_timeout(lambda: self.update_status(message, complete, count, dir), 100)
+            sublime.set_timeout(lambda: self.check_status(complete), 100)
         else:
-            self.view.erase_status("SublimeToks")
             if complete:
                 complete()
-
-    def deferred_index_one(self):
-        if self.worker and self.worker.is_alive():
-            sublime.set_timeout(lambda: self.deferred_index_one(), 500)
-        else:
-            self.worker = SublimeToksIndexer(self.index, self.index_one_files)
-            self.index_one_files = []
-            self.worker.start()
 
     def run(self, mode, filename=None, prompt=False, report=False):
         project_file_name = self.window.project_file_name()
         if not project_file_name:
-            if mode != "index_one":
-                sublime.error_message("SublimeToks: Please create a project to enable indexing")
+            sublime.error_message("SublimeToks: Please create a project to enable indexing")
             return
 
         self.index = project_file_name.replace(".sublime-project", ".sublime-toks")
@@ -362,12 +377,6 @@ class ToksCommand(sublime_plugin.WindowCommand):
             self.navigate_forward()
             return
 
-        if mode == "index_one":
-            self.index_one_files.append(filename)
-            if len(self.index_one_files) == 1:
-                sublime.set_timeout(lambda: self.deferred_index_one(), 500)
-            return
-
         if self.worker and self.worker.is_alive():
             return
 
@@ -375,27 +384,13 @@ class ToksCommand(sublime_plugin.WindowCommand):
         self.prompt = prompt
         self.report = report
 
-        # Check if index exists
-        if mode == "index" or not os.path.isfile(self.index):
-            self.worker = SublimeToksIndexer(self.index)
-            self.worker.start()
-            self.update_status("Indexing", self.on_indexing_complete)
-            return
-
-        self.on_indexing_complete()
-
-    def on_indexing_complete(self):
-
-        if self.mode == "index":
-            return
-
         # Save the pre lookup position
         self.pre_lookup_position = self.active_view_position()
         self.pre_lookup_view = self.view
 
         # Search for the first word that is selected.
         first_selection = self.view.word(self.view.sel()[0])
-        symbol = self.view.substr(first_selection)
+        symbol = self.view.substr(first_selection).strip()
 
         # Show only the one selection picked for search
         self.view.sel().clear()
@@ -417,10 +412,12 @@ class ToksCommand(sublime_plugin.WindowCommand):
                 index = self.index,
                 symbol = symbol,
                 mode = self.mode,
-                commonprefix = self.commonprefix)
+                commonprefix = self.commonprefix,
+                view = self.view
+                )
         self.worker.start()
         self.quick_panel_index = 0
-        self.update_status("Searching", self.on_lookup_complete)
+        self.check_status(self.on_lookup_complete)
 
     def on_lookup_complete(self):
         if self.report:

@@ -1,14 +1,5 @@
 [
     {
-        // Run indexing
-        "keys": ["super+l", "super+i"],
-        "command": "toks",
-        "args":
-        {
-            "mode": "index"
-        }
-    },
-    {
         // Lookup references
         "keys": ["super+l", "super+r"],
         "command": "toks",
